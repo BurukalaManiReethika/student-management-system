@@ -176,7 +176,80 @@ def search_student():
         students=students,
         total_students=len(students)
     )
+# -------------------------
+# Edit Student
+# -------------------------
+@app.route("/edit/<int:id>", methods=["GET", "POST"])
+@login_required
+def edit_student(id):
 
+    conn = get_db_connection()
+
+    student = conn.execute(
+        "SELECT * FROM students WHERE id=?",
+        (id,)
+    ).fetchone()
+
+    if request.method == "POST":
+
+        name = request.form["name"]
+        email = request.form["email"]
+        age = request.form["age"]
+        course = request.form["course"]
+        marks = request.form["marks"]
+
+        conn.execute("""
+        UPDATE students
+        SET name=?,
+            email=?,
+            age=?,
+            course=?,
+            marks=?
+        WHERE id=?
+        """, (
+            name,
+            email,
+            age,
+            course,
+            marks,
+            id
+        ))
+
+        conn.commit()
+        conn.close()
+
+        flash("Student Updated Successfully!", "success")
+
+        return redirect(url_for("dashboard"))
+
+    conn.close()
+
+    return render_template(
+        "edit_student.html",
+        student=student
+    )
+
+
+# -------------------------
+# Delete Student
+# -------------------------
+@app.route("/delete/<int:id>")
+@login_required
+def delete_student(id):
+
+    conn = get_db_connection()
+
+    conn.execute(
+        "DELETE FROM students WHERE id=?",
+        (id,)
+    )
+
+    conn.commit()
+    conn.close()
+
+    flash("Student Deleted Successfully!", "warning")
+
+    return redirect(url_for("dashboard"))
 
 # -------------------------
 # Run Application
