@@ -15,29 +15,38 @@ def get_db_connection():
     conn = sqlite3.connect(DATABASE)
     conn.row_factory = sqlite3.Row
     return conn
+    def calculate_grade(marks):
+
+    marks = int(marks)
+
+    if marks >= 90:
+        return "A+"
+
+    elif marks >= 80:
+        return "A"
+
+    elif marks >= 70:
+        return "B"
+
+    elif marks >= 60:
+        return "C"
+
+    elif marks >= 50:
+        return "D"
+
+    return "F"
 
 
-# -------------------------
-# Create Tables
-# -------------------------
-def init_db():
-    conn = get_db_connection()
 
-    conn.execute("""
-    CREATE TABLE IF NOT EXISTS students(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        email TEXT NOT NULL,
-        age INTEGER,
-        course TEXT,
-        marks INTEGER
-    )
-    """)
-
-    conn.commit()
-    conn.close()
-
-
+   CREATE TABLE IF NOT EXISTS students(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    email TEXT NOT NULL,
+    age INTEGER,
+    course TEXT,
+    marks INTEGER,
+    grade TEXT
+)
 # -------------------------
 # Login Required Decorator
 # -------------------------
@@ -111,41 +120,20 @@ def dashboard():
 # -------------------------
 # Add Student
 # -------------------------
-@app.route("/add", methods=["GET", "POST"])
-@login_required
-def add_student():
+grade = calculate_grade(marks)
 
-    if request.method == "POST":
-
-        name = request.form["name"]
-        email = request.form["email"]
-        age = request.form["age"]
-        course = request.form["course"]
-        marks = request.form["marks"]
-
-        conn = get_db_connection()
-
-        conn.execute("""
-        INSERT INTO students
-        (name,email,age,course,marks)
-        VALUES (?,?,?,?,?)
-        """, (
-            name,
-            email,
-            age,
-            course,
-            marks
-        ))
-
-        conn.commit()
-        conn.close()
-
-        flash("Student Added Successfully!", "success")
-
-        return redirect(url_for("dashboard"))
-
-    return render_template("add_student.html")
-
+conn.execute("""
+INSERT INTO students
+(name,email,age,course,marks,grade)
+VALUES (?,?,?,?,?,?)
+""",(
+    name,
+    email,
+    age,
+    course,
+    marks,
+    grade
+))    
 
 # -------------------------
 # Search Student
@@ -179,57 +167,26 @@ def search_student():
 # -------------------------
 # Edit Student
 # -------------------------
-@app.route("/edit/<int:id>", methods=["GET", "POST"])
-@login_required
-def edit_student(id):
+grade = calculate_grade(marks)
 
-    conn = get_db_connection()
-
-    student = conn.execute(
-        "SELECT * FROM students WHERE id=?",
-        (id,)
-    ).fetchone()
-
-    if request.method == "POST":
-
-        name = request.form["name"]
-        email = request.form["email"]
-        age = request.form["age"]
-        course = request.form["course"]
-        marks = request.form["marks"]
-
-        conn.execute("""
-        UPDATE students
-        SET name=?,
-            email=?,
-            age=?,
-            course=?,
-            marks=?
-        WHERE id=?
-        """, (
-            name,
-            email,
-            age,
-            course,
-            marks,
-            id
-        ))
-
-        conn.commit()
-        conn.close()
-
-        flash("Student Updated Successfully!", "success")
-
-        return redirect(url_for("dashboard"))
-
-    conn.close()
-
-    return render_template(
-        "edit_student.html",
-        student=student
-    )
-
-
+conn.execute("""
+UPDATE students
+SET name=?,
+email=?,
+age=?,
+course=?,
+marks=?,
+grade=?
+WHERE id=?
+""",(
+    name,
+    email,
+    age,
+    course,
+    marks,
+    grade,
+    id
+))
 # -------------------------
 # Delete Student
 # -------------------------
