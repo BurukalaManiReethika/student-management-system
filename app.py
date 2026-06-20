@@ -39,7 +39,7 @@ def calculate_grade(marks):
 
 
 
-   CREATE TABLE IF NOT EXISTS students(
+    CREATE TABLE IF NOT EXISTS students(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     email TEXT NOT NULL,
