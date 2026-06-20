@@ -1,113 +1,126 @@
-{% extends 'base.html' %}
-
+{% extends "base.html" %}
+{% block title %}Dashboard - Student Management System{% endblock %}
 {% block content %}
 
-<div class="d-flex justify-content-between">
-
-<h2>Dashboard</h2>
-
-<a href="/add"
-class="btn btn-success">
-Add Student
-</a>
-
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="card stat-card stat-card-primary shadow-sm">
+      <div class="card-body d-flex align-items-center gap-3">
+        <div class="stat-icon"><i class="fa-solid fa-users"></i></div>
+        <div>
+          <div class="stat-value">{{ total_students }}</div>
+          <div class="stat-label">Total Students</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card stat-card stat-card-success shadow-sm">
+      <div class="card-body d-flex align-items-center gap-3">
+        <div class="stat-icon"><i class="fa-solid fa-chart-line"></i></div>
+        <div>
+          <div class="stat-value">{{ avg_marks }}</div>
+          <div class="stat-label">Average Marks</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card stat-card stat-card-info shadow-sm">
+      <div class="card-body d-flex align-items-center gap-3">
+        <div class="stat-icon"><i class="fa-solid fa-file-csv"></i></div>
+        <div>
+          <a href="{{ url_for('export_csv') }}" class="stat-value text-decoration-none">Export</a>
+          <div class="stat-label">Download CSV</div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
-<hr>
+<div class="card shadow-sm border-0">
+  <div class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center gap-2">
+    <h5 class="mb-0"><i class="fa-solid fa-table-list"></i> Student Records</h5>
+    <div class="d-flex gap-2">
+      <form class="d-flex" method="GET" action="{{ url_for('search_student') }}">
+        <input type="text" name="query" class="form-control form-control-sm" placeholder="Search name, email, course...">
+        <button class="btn btn-outline-primary btn-sm ms-2" type="submit"><i class="fa-solid fa-magnifying-glass"></i></button>
+      </form>
+      <a href="{{ url_for('add_student') }}" class="btn btn-primary btn-sm">
+        <i class="fa-solid fa-user-plus"></i> Add Student
+      </a>
+    </div>
+  </div>
 
-<div class="card mb-3">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>#</th>
+          <th><a href="{{ url_for('dashboard', sort='name', order='asc' if sort!='name' or order=='desc' else 'desc') }}" class="sort-link">Name <i class="fa-solid fa-sort"></i></a></th>
+          <th>Email</th>
+          <th><a href="{{ url_for('dashboard', sort='age', order='asc' if sort!='age' or order=='desc' else 'desc') }}" class="sort-link">Age <i class="fa-solid fa-sort"></i></a></th>
+          <th><a href="{{ url_for('dashboard', sort='course', order='asc' if sort!='course' or order=='desc' else 'desc') }}" class="sort-link">Course <i class="fa-solid fa-sort"></i></a></th>
+          <th><a href="{{ url_for('dashboard', sort='marks', order='asc' if sort!='marks' or order=='desc' else 'desc') }}" class="sort-link">Marks <i class="fa-solid fa-sort"></i></a></th>
+          <th>Grade</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for student in students %}
+        <tr>
+          <td>{{ student.id }}</td>
+          <td class="fw-semibold">{{ student.name }}</td>
+          <td>{{ student.email }}</td>
+          <td>{{ student.age }}</td>
+          <td>{{ student.course }}</td>
+          <td>{{ student.marks }}</td>
+          <td>
+            <span class="badge grade-badge grade-{{ student.grade | replace('+', 'plus') }}">{{ student.grade }}</span>
+          </td>
+          <td class="text-end">
+            <a href="{{ url_for('edit_student', id=student.id) }}" class="btn btn-sm btn-outline-secondary" title="Edit">
+              <i class="fa-solid fa-pen"></i>
+            </a>
+            <form method="POST" action="{{ url_for('delete_student', id=student.id) }}" class="d-inline" onsubmit="return confirm('Delete {{ student.name }}? This cannot be undone.');">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
+                <i class="fa-solid fa-trash"></i>
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="8" class="text-center text-muted py-5">
+            <i class="fa-solid fa-inbox fa-2x mb-2 d-block"></i>
+            No students found.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 
-<div class="card-body">
-
-<h4>
-Total Students:
-{{ total_students }}
-</h4>
-  <div class="row">
-
-<div class="col-md-6">
-<div class="dashboard-card">
-
-<h3>Total Students</h3>
-
-<h1>{{ total_students }}</h1>
-
+  {% if total_pages > 1 %}
+  <div class="card-footer bg-white">
+    <nav>
+      <ul class="pagination pagination-sm justify-content-center mb-0">
+        <li class="page-item {% if page <= 1 %}disabled{% endif %}">
+          <a class="page-link" href="{{ url_for('dashboard', page=page-1, sort=sort, order=order) }}">Previous</a>
+        </li>
+        {% for p in range(1, total_pages + 1) %}
+        <li class="page-item {% if p == page %}active{% endif %}">
+          <a class="page-link" href="{{ url_for('dashboard', page=p, sort=sort, order=order) }}">{{ p }}</a>
+        </li>
+        {% endfor %}
+        <li class="page-item {% if page >= total_pages %}disabled{% endif %}">
+          <a class="page-link" href="{{ url_for('dashboard', page=page+1, sort=sort, order=order) }}">Next</a>
+        </li>
+      </ul>
+    </nav>
+  </div>
+  {% endif %}
 </div>
-</div>
-
-<div class="col-md-6">
-<div class="dashboard-card">
-
-<h3>Average Marks</h3>
-
-<h1>{{ avg_marks }}</h1>
-
-</div>
-</div>
-
-</div>
-
-  
-
-</div>
-
-</div>
-
-<form action="/search">
-
-<input
-type="text"
-name="query"
-class="form-control"
-placeholder="Search Student">
-
-</form>
-
-<br>
-
-<table class="table table-bordered">
-
-<tr>
-<th>ID</th>
-<th>Name</th>
-<th>Email</th>
-<th>Course</th>
-<th>Marks</th>
-<th>Actions</th>
-</tr>
-
-{% for student in students %}
-
-<tr>
-
-<td>{{ student.id }}</td>
-
-<td>{{ student.name }}</td>
-
-<td>{{ student.email }}</td>
-
-<td>{{ student.course }}</td>
-
-<td>{{ student.marks }}</td>
-
-<td>
-
-<a href="/edit/{{ student.id }}"
-class="btn btn-primary btn-sm">
-Edit
-</a>
-
-<a href="/delete/{{ student.id }}"
-class="btn btn-danger btn-sm delete-btn">
-Delete
-</a>
-
-</td>
-
-</tr>
-
-{% endfor %}
-
-</table>
 
 {% endblock %}
