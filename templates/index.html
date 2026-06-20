@@ -1,37 +1,88 @@
+{% extends 'base.html' %}
 
-<html>
-<head>
-    <title>Student Management System</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-</head>
-<body>
+{% block content %}
 
-    <h1>Student Management System</h1>
+<div class="d-flex justify-content-between">
 
-    <a href="/add" class="btn">Add Student</a>
+<h2>Dashboard</h2>
 
-    <table>
-        <tr>
-            <th>ID</th>
-            <th>Name</th>
-            <th>Age</th>
-            <th>Course</th>
-            <th>Action</th>
-        </tr>
+<a href="/add"
+class="btn btn-success">
+Add Student
+</a>
 
-        {% for s in students %}
-        <tr>
-            <td>{{ s[0] }}</td>
-            <td>{{ s[1] }}</td>
-            <td>{{ s[2] }}</td>
-            <td>{{ s[3] }}</td>
-            <td>
-                <a href="/delete/{{ s[0] }}">Delete</a>
-            </td>
-        </tr>
-        {% endfor %}
+</div>
 
-    </table>
+<hr>
 
-</body>
-</html>
+<div class="card mb-3">
+
+<div class="card-body">
+
+<h4>
+Total Students:
+{{ total_students }}
+</h4>
+
+</div>
+
+</div>
+
+<form action="/search">
+
+<input
+type="text"
+name="query"
+class="form-control"
+placeholder="Search Student">
+
+</form>
+
+<br>
+
+<table class="table table-bordered">
+
+<tr>
+<th>ID</th>
+<th>Name</th>
+<th>Email</th>
+<th>Course</th>
+<th>Marks</th>
+<th>Actions</th>
+</tr>
+
+{% for student in students %}
+
+<tr>
+
+<td>{{ student.id }}</td>
+
+<td>{{ student.name }}</td>
+
+<td>{{ student.email }}</td>
+
+<td>{{ student.course }}</td>
+
+<td>{{ student.marks }}</td>
+
+<td>
+
+<a href="/edit/{{ student.id }}"
+class="btn btn-primary btn-sm">
+Edit
+</a>
+
+<a href="/delete/{{ student.id }}"
+class="btn btn-danger btn-sm">
+Delete
+</a>
+
+</td>
+
+</tr>
+
+{% endfor %}
+
+</table>
+
+{% endblock %}
