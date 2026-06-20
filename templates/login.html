@@ -1,50 +1,43 @@
-{% extends 'base.html' %}
-
+{% extends "base.html" %}
+{% block title %}Login - Student Management System{% endblock %}
 {% block content %}
+<div class="row justify-content-center align-items-center" style="min-height: 75vh;">
+  <div class="col-md-5 col-lg-4">
+    <div class="card login-card shadow-lg border-0">
+      <div class="card-body p-4 p-md-5">
+        <div class="text-center mb-4">
+          <div class="login-icon mb-3">
+            <i class="fa-solid fa-graduation-cap"></i>
+          </div>
+          <h3 class="fw-bold mb-1">Admin Login</h3>
+          <p class="text-muted small mb-0">Sign in to manage student records</p>
+        </div>
 
-<div class="row justify-content-center">
+        <form method="POST" action="{{ url_for('login') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-<div class="col-md-5">
+          <div class="mb-3">
+            <label class="form-label">Username</label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="fa-solid fa-user"></i></span>
+              <input type="text" name="username" class="form-control" placeholder="Enter username" required autofocus>
+            </div>
+          </div>
 
-<div class="card shadow">
+          <div class="mb-4">
+            <label class="form-label">Password</label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="fa-solid fa-lock"></i></span>
+              <input type="password" name="password" class="form-control" placeholder="Enter password" required>
+            </div>
+          </div>
 
-<div class="card-header">
-<h3>Admin Login</h3>
+          <button type="submit" class="btn btn-primary w-100 py-2">
+            <i class="fa-solid fa-right-to-bracket"></i> Login
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
 </div>
-
-<div class="card-body">
-
-<form method="POST">
-
-<div class="mb-3">
-<label>Username</label>
-<input
-type="text"
-name="username"
-class="form-control"
-required>
-</div>
-
-<div class="mb-3">
-<label>Password</label>
-<input
-type="password"
-name="password"
-class="form-control"
-required>
-</div>
-
-<button
-class="btn btn-primary w-100">
-Login
-</button>
-
-</form>
-
-</div>
-</div>
-
-</div>
-</div>
-
 {% endblock %}
