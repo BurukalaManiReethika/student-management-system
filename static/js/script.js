@@ -1,22 +1,10 @@
-document.addEventListener("DOMContentLoaded", () => {
-
-    console.log("Student Management System Loaded");
-
-    const deletes =
-        document.querySelectorAll(".delete-btn");
-
-    deletes.forEach(btn => {
-
-        btn.addEventListener("click", function(e){
-
-            if(!confirm(
-                "Delete this student?"
-            )){
-                e.preventDefault();
-            }
-
-        });
-
-    });
-
+// Auto-dismiss alerts after 4 seconds
+document.addEventListener("DOMContentLoaded", function () {
+  const alerts = document.querySelectorAll(".alert");
+  alerts.forEach(function (alert) {
+    setTimeout(function () {
+      const bsAlert = bootstrap.Alert.getOrCreateInstance(alert);
+      if (bsAlert) bsAlert.close();
+    }, 4000);
+  });
 });
