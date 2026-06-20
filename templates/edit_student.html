@@ -1,111 +1,53 @@
-{% extends 'base.html' %}
-
+{% extends "base.html" %}
+{% block title %}Edit Student - Student Management System{% endblock %}
 {% block content %}
 
 <div class="row justify-content-center">
+  <div class="col-lg-7">
+    <div class="card shadow-sm border-0">
+      <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="fa-solid fa-pen"></i> Edit Student</h5>
+        <span class="badge grade-badge grade-{{ student.grade | replace('+', 'plus') }}">{{ student.grade }}</span>
+      </div>
+      <div class="card-body p-4">
+        <form method="POST" action="{{ url_for('edit_student', id=student.id) }}" novalidate>
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-<div class="col-md-8">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Full Name</label>
+              <input type="text" name="name" class="form-control" value="{{ student.name }}" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Email</label>
+              <input type="email" name="email" class="form-control" value="{{ student.email }}" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Age</label>
+              <input type="number" name="age" min="0" max="120" class="form-control" value="{{ student.age }}" required>
+            </div>
+            <div class="col-md-8">
+              <label class="form-label">Course</label>
+              <input type="text" name="course" class="form-control" value="{{ student.course }}" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Marks (0-100)</label>
+              <input type="number" name="marks" min="0" max="100" class="form-control" value="{{ student.marks }}" required>
+            </div>
+          </div>
 
-<div class="card shadow">
-
-<div class="card-header bg-primary text-white">
-<h3>Edit Student</h3>
-</div>
-
-<div class="card-body">
-
-<form method="POST">
-
-<div class="row">
-
-<div class="col-md-6 mb-3">
-
-<label>Name</label>
-
-<input
-type="text"
-name="name"
-value="{{ student.name }}"
-class="form-control"
-required>
-
-</div>
-
-<div class="col-md-6 mb-3">
-
-<label>Email</label>
-
-<input
-type="email"
-name="email"
-value="{{ student.email }}"
-class="form-control"
-required>
-
-</div>
-
-</div>
-
-<div class="row">
-
-<div class="col-md-4 mb-3">
-
-<label>Age</label>
-
-<input
-type="number"
-name="age"
-value="{{ student.age }}"
-class="form-control"
-required>
-
-</div>
-
-<div class="col-md-4 mb-3">
-
-<label>Course</label>
-
-<input
-type="text"
-name="course"
-value="{{ student.course }}"
-class="form-control"
-required>
-
-</div>
-
-<div class="col-md-4 mb-3">
-
-<label>Marks</label>
-
-<input
-type="number"
-name="marks"
-value="{{ student.marks }}"
-class="form-control"
-required>
-
-</div>
-
-</div>
-
-<button
-type="submit"
-class="btn btn-primary">
-Update Student
-</button>
-
-<a href="/"
-class="btn btn-secondary">
-Back
-</a>
-
-</form>
-
-</div>
-</div>
-
-</div>
+          <div class="d-flex gap-2 mt-4">
+            <button type="submit" class="btn btn-primary px-4">
+              <i class="fa-solid fa-check"></i> Update Student
+            </button>
+            <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary px-4">
+              <i class="fa-solid fa-xmark"></i> Cancel
+            </a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
 </div>
 
 {% endblock %}
