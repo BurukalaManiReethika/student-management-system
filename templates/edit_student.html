@@ -1,0 +1,111 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<div class="row justify-content-center">
+
+<div class="col-md-8">
+
+<div class="card shadow">
+
+<div class="card-header bg-primary text-white">
+<h3>Edit Student</h3>
+</div>
+
+<div class="card-body">
+
+<form method="POST">
+
+<div class="row">
+
+<div class="col-md-6 mb-3">
+
+<label>Name</label>
+
+<input
+type="text"
+name="name"
+value="{{ student.name }}"
+class="form-control"
+required>
+
+</div>
+
+<div class="col-md-6 mb-3">
+
+<label>Email</label>
+
+<input
+type="email"
+name="email"
+value="{{ student.email }}"
+class="form-control"
+required>
+
+</div>
+
+</div>
+
+<div class="row">
+
+<div class="col-md-4 mb-3">
+
+<label>Age</label>
+
+<input
+type="number"
+name="age"
+value="{{ student.age }}"
+class="form-control"
+required>
+
+</div>
+
+<div class="col-md-4 mb-3">
+
+<label>Course</label>
+
+<input
+type="text"
+name="course"
+value="{{ student.course }}"
+class="form-control"
+required>
+
+</div>
+
+<div class="col-md-4 mb-3">
+
+<label>Marks</label>
+
+<input
+type="number"
+name="marks"
+value="{{ student.marks }}"
+class="form-control"
+required>
+
+</div>
+
+</div>
+
+<button
+type="submit"
+class="btn btn-primary">
+Update Student
+</button>
+
+<a href="/"
+class="btn btn-secondary">
+Back
+</a>
+
+</form>
+
+</div>
+</div>
+
+</div>
+</div>
+
+{% endblock %}
