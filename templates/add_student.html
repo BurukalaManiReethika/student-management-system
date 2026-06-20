@@ -1,91 +1,52 @@
-{% extends 'base.html' %}
-
+{% extends "base.html" %}
+{% block title %}Add Student - Student Management System{% endblock %}
 {% block content %}
 
 <div class="row justify-content-center">
+  <div class="col-lg-7">
+    <div class="card shadow-sm border-0">
+      <div class="card-header bg-white">
+        <h5 class="mb-0"><i class="fa-solid fa-user-plus"></i> Add New Student</h5>
+      </div>
+      <div class="card-body p-4">
+        <form method="POST" action="{{ url_for('add_student') }}" novalidate>
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-<div class="col-md-8">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Full Name</label>
+              <input type="text" name="name" class="form-control" value="{{ form.get('name', '') }}" placeholder="e.g. Reethika Burukala" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Email</label>
+              <input type="email" name="email" class="form-control" value="{{ form.get('email', '') }}" placeholder="student@example.com" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Age</label>
+              <input type="number" name="age" min="0" max="120" class="form-control" value="{{ form.get('age', '') }}" required>
+            </div>
+            <div class="col-md-8">
+              <label class="form-label">Course</label>
+              <input type="text" name="course" class="form-control" value="{{ form.get('course', '') }}" placeholder="e.g. B.Tech CSE" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Marks (0-100)</label>
+              <input type="number" name="marks" min="0" max="100" class="form-control" value="{{ form.get('marks', '') }}" required>
+            </div>
+          </div>
 
-<div class="card shadow">
-
-<div class="card-header bg-success text-white">
-<h3>Add Student</h3>
-</div>
-
-<div class="card-body">
-
-<form method="POST">
-
-<div class="row">
-
-<div class="col-md-6 mb-3">
-<label>Name</label>
-<input
-type="text"
-name="name"
-class="form-control"
-required>
-</div>
-
-<div class="col-md-6 mb-3">
-<label>Email</label>
-<input
-type="email"
-name="email"
-class="form-control"
-required>
-</div>
-
-</div>
-
-<div class="row">
-
-<div class="col-md-4 mb-3">
-<label>Age</label>
-<input
-type="number"
-name="age"
-class="form-control"
-required>
-</div>
-
-<div class="col-md-4 mb-3">
-<label>Course</label>
-<input
-type="text"
-name="course"
-class="form-control"
-required>
-</div>
-
-<div class="col-md-4 mb-3">
-<label>Marks</label>
-<input
-type="number"
-name="marks"
-class="form-control"
-required>
-</div>
-
-</div>
-
-<button
-type="submit"
-class="btn btn-success">
-Add Student
-</button>
-
-<a href="/"
-class="btn btn-secondary">
-Back
-</a>
-
-</form>
-
-</div>
-</div>
-
-</div>
+          <div class="d-flex gap-2 mt-4">
+            <button type="submit" class="btn btn-primary px-4">
+              <i class="fa-solid fa-check"></i> Save Student
+            </button>
+            <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary px-4">
+              <i class="fa-solid fa-xmark"></i> Cancel
+            </a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
 </div>
 
 {% endblock %}
