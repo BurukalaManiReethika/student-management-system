@@ -15,7 +15,7 @@ def get_db_connection():
     conn = sqlite3.connect(DATABASE)
     conn.row_factory = sqlite3.Row
     return conn
-    def calculate_grade(marks):
+def calculate_grade(marks):
 
     marks = int(marks)
 
@@ -35,6 +35,7 @@ def get_db_connection():
         return "D"
 
     return "F"
+
 
 
 
