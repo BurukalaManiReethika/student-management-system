@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Error {{ code }} - Student Management System{% endblock %}
+{% block content %}
+<div class="text-center py-5">
+  <div class="error-code mb-2">{{ code }}</div>
+  <p class="text-muted mb-4">{{ message }}</p>
+  <a href="{{ url_for('dashboard') if session.admin else url_for('login') }}" class="btn btn-primary">
+    <i class="fa-solid fa-house"></i> Go Home
+  </a>
+</div>
+{% endblock %}
