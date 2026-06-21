@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block title %}Analytics - Student Management System{% endblock %}
+{% block content %}
+
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="card stat-card stat-card-primary shadow-sm">
+      <div class="card-body d-flex align-items-center gap-3">
+        <div class="stat-icon"><i class="fa-solid fa-users"></i></div>
+        <div>
+          <div class="stat-value">{{ total_students }}</div>
+          <div class="stat-label">Total Students</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card stat-card stat-card-success shadow-sm">
+      <div class="card-body d-flex align-items-center gap-3">
+        <div class="stat-icon"><i class="fa-solid fa-chart-line"></i></div>
+        <div>
+          <div class="stat-value">{{ avg_marks }}</div>
+          <div class="stat-label">Average Marks</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card stat-card stat-card-info shadow-sm">
+      <div class="card-body d-flex align-items-center gap-3">
+        <div class="stat-icon"><i class="fa-solid fa-medal"></i></div>
+        <div>
+          <div class="stat-value">{{ top_student.name if top_student else "—" }}</div>
+          <div class="stat-label">Top Scorer {% if top_student %}({{ top_student.marks }} marks){% endif %}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-6">
+    <div class="card shadow-sm border-0 h-100">
+      <div class="card-header bg-white"><i class="fa-solid fa-chart-pie"></i> Grade Distribution</div>
+      <div class="card-body"><canvas id="gradeChart" height="220"></canvas></div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card shadow-sm border-0 h-100">
+      <div class="card-header bg-white"><i class="fa-solid fa-chart-column"></i> Marks Distribution</div>
+      <div class="card-body"><canvas id="marksChart" height="220"></canvas></div>
+    </div>
+  </div>
+  <div class="col-12">
+    <div class="card shadow-sm border-0">
+      <div class="card-header bg-white"><i class="fa-solid fa-layer-group"></i> Students per Course</div>
+      <div class="card-body"><canvas id="courseChart" height="160"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+  const gradeLabels = {{ grade_labels | tojson }};
+  const gradeData = {{ grade_data | tojson }};
+  const binLabels = {{ bin_labels | tojson }};
+  const binData = {{ bin_data | tojson }};
+  const courseLabels = {{ course_labels | tojson }};
+  const courseData = {{ course_data | tojson }};
+
+  const gradeColors = ["#16a34a", "#22c55e", "#0891b2", "#f59e0b", "#f97316", "#dc2626"];
+  const textColor = getComputedStyle(document.body).getPropertyValue('--chart-text') || '#1f2937';
+  const gridColor = getComputedStyle(document.body).getPropertyValue('--chart-grid') || '#e5e7eb';
+
+  new Chart(document.getElementById('gradeChart'), {
+    type: 'doughnut',
+    data: {
+      labels: gradeLabels,
+      datasets: [{ data: gradeData, backgroundColor: gradeColors, borderWidth: 0 }]
+    },
+    options: {
+      plugins: { legend: { position: 'bottom', labels: { color: textColor } } }
+    }
+  });
+
+  new Chart(document.getElementById('marksChart'), {
+    type: 'bar',
+    data: {
+      labels: binLabels,
+      datasets: [{ label: 'Students', data: binData, backgroundColor: '#4f46e5', borderRadius: 6 }]
+    },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: textColor }, grid: { color: gridColor } },
+        y: { beginAtZero: true, ticks: { color: textColor, precision: 0 }, grid: { color: gridColor } }
+      }
+    }
+  });
+
+  new Chart(document.getElementById('courseChart'), {
+    type: 'bar',
+    data: {
+      labels: courseLabels,
+      datasets: [{ label: 'Students', data: courseData, backgroundColor: '#0891b2', borderRadius: 6 }]
+    },
+    options: {
+      indexAxis: 'y',
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { beginAtZero: true, ticks: { color: textColor, precision: 0 }, grid: { color: gridColor } },
+        y: { ticks: { color: textColor }, grid: { color: gridColor } }
+      }
+    }
+  });
+</script>
+{% endblock %}
