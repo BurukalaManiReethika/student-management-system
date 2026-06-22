@@ -1,0 +1,271 @@
+{% extends "base.html" %}
+
+{% block title %}
+Student Details
+{% endblock %}
+
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+
+    <h2>
+        Student Details
+    </h2>
+
+    <a href="{{ url_for('students') }}"
+       class="btn btn-secondary">
+
+        Back
+
+    </a>
+
+</div>
+
+<div class="row">
+
+    <div class="col-lg-4">
+
+        <div class="card shadow-sm mb-4">
+
+            <div class="card-body text-center">
+
+                <div class="mb-3">
+
+                    <i class="fas fa-user-graduate fa-5x text-primary"></i>
+
+                </div>
+
+                <h4>
+                    {{ student.name }}
+                </h4>
+
+                <p class="text-muted">
+                    {{ student.course }}
+                </p>
+
+                <span class="badge bg-success">
+                    Grade {{ grade }}
+                </span>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="col-lg-8">
+
+        <div class="card shadow-sm mb-4">
+
+            <div class="card-header">
+
+                <h5 class="mb-0">
+                    Personal Information
+                </h5>
+
+            </div>
+
+            <div class="card-body">
+
+                <div class="row">
+
+                    <div class="col-md-6 mb-3">
+
+                        <strong>Email</strong>
+
+                        <p>
+                            {{ student.email }}
+                        </p>
+
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+
+                        <strong>Phone</strong>
+
+                        <p>
+                            {{ student.phone }}
+                        </p>
+
+                    </div>
+
+                </div>
+
+                <div class="row">
+
+                    <div class="col-md-6 mb-3">
+
+                        <strong>Age</strong>
+
+                        <p>
+                            {{ student.age }}
+                        </p>
+
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+
+                        <strong>Gender</strong>
+
+                        <p>
+                            {{ student.gender }}
+                        </p>
+
+                    </div>
+
+                </div>
+
+                <div class="row">
+
+                    <div class="col-md-6 mb-3">
+
+                        <strong>Date of Birth</strong>
+
+                        <p>
+                            {{ student.dob }}
+                        </p>
+
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+
+                        <strong>Marks</strong>
+
+                        <p>
+                            {{ student.marks }}
+                        </p>
+
+                    </div>
+
+                </div>
+
+                <div class="mb-3">
+
+                    <strong>Address</strong>
+
+                    <p>
+                        {{ student.address }}
+                    </p>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="card shadow-sm">
+
+            <div class="card-header">
+
+                <h5 class="mb-0">
+                    Attendance Summary
+                </h5>
+
+            </div>
+
+            <div class="card-body">
+
+                <div class="row text-center mb-4">
+
+                    <div class="col-md-4">
+
+                        <h4>
+                            {{ att_pct }}%
+                        </h4>
+
+                        <p>
+                            Attendance
+                        </p>
+
+                    </div>
+
+                    <div class="col-md-4">
+
+                        <h4>
+                            {{ att_present }}
+                        </h4>
+
+                        <p>
+                            Present
+                        </p>
+
+                    </div>
+
+                    <div class="col-md-4">
+
+                        <h4>
+                            {{ att_total }}
+                        </h4>
+
+                        <p>
+                            Total Days
+                        </p>
+
+                    </div>
+
+                </div>
+
+                <table class="table table-bordered">
+
+                    <thead>
+
+                    <tr>
+
+                        <th>Date</th>
+                        <th>Status</th>
+
+                    </tr>
+
+                    </thead>
+
+                    <tbody>
+
+                    {% for record in att_records %}
+
+                    <tr>
+
+                        <td>
+                            {{ record.date }}
+                        </td>
+
+                        <td>
+
+                            {% if record.status == 'P' %}
+
+                            <span class="badge bg-success">
+                                Present
+                            </span>
+
+                            {% elif record.status == 'A' %}
+
+                            <span class="badge bg-danger">
+                                Absent
+                            </span>
+
+                            {% else %}
+
+                            <span class="badge bg-warning text-dark">
+                                Leave
+                            </span>
+
+                            {% endif %}
+
+                        </td>
+
+                    </tr>
+
+                    {% endfor %}
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}
