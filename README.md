@@ -1,74 +1,67 @@
 # 🎓 Student Management System
 
-A modern, full-stack Student Management System built with **Flask, SQLite, Bootstrap, HTML, CSS, and JavaScript**. This application provides a secure and user-friendly platform for managing student records with authentication, analytics, grading, and CRUD operations.
+A modern and responsive Student Management System built with Flask, SQLite, HTML, CSS, and JavaScript.
 
-## 🚀 Live Demo
-
-🌐 Live Website: https://student-management-system-4-zywt.onrender.com/
-
----
-
-## 📌 Features
-
-### 🔐 Authentication System
-- Admin Login
-- Session-Based Authentication
-- Protected Routes
-- Secure Logout Functionality
+## 🚀 Features
 
 ### 👨‍🎓 Student Management
-- Add New Students
-- Edit Student Information
-- Delete Student Records
-- Search Students Instantly
+- Add Students
+- Edit Students
+- Delete Students
 - View Student Details
+- Search Students
+- Export Student Data to CSV
 
-### 📊 Analytics Dashboard
-- Total Students Counter
-- Average Marks Calculation
-- Dynamic Dashboard Statistics
-- Real-Time Data Updates
+### 📊 Dashboard
+- Total Students
+- Average Marks
+- Pass Percentage
+- Top Performer
+- Grade Distribution
+- Course Statistics
 
-### 🏆 Automatic Grade Generation
-| Marks | Grade |
-|---------|---------|
-| 90+ | A+ |
-| 80-89 | A |
-| 70-79 | B |
-| 60-69 | C |
-| 50-59 | D |
-| Below 50 | F |
+### 📅 Attendance Management
+- Mark Attendance
+- View Attendance Records
+- Attendance Reports
+- Present / Absent Statistics
 
-### 🎨 Modern User Interface
-- Bootstrap 5 UI
-- Responsive Design
-- Mobile Friendly
-- Professional Dashboard
-- Clean Layout
+### 📢 Notice Board
+- Create Notices
+- View Notices
+- Delete Notices
+- Notice Categories
+
+### 🔐 Authentication
+- Admin Login
+- Teacher Login
+- Student Login
+- Role-Based Access Control
+
+### 📈 Reports
+- Student Performance Reports
+- Course Analytics
+- Grade Distribution
+- Statistics Dashboard
 
 ---
 
 ## 🛠️ Tech Stack
 
+### Backend
+- Flask
+- SQLite
+- Python
+
 ### Frontend
 - HTML5
 - CSS3
-- Bootstrap 5
 - JavaScript
-
-### Backend
-- Python
-- Flask
-
-### Database
-- SQLite
+- Bootstrap
 
 ### Deployment
 - Render
-
-### Version Control
-- Git
-- GitHub
+- Gunicorn
 
 ---
 
@@ -81,34 +74,39 @@ student-management-system/
 ├── students.db
 ├── requirements.txt
 ├── render.yaml
-├── README.md
+│
+├── static/
+│   ├── css/
+│   │   └── style.css
+│   │
+│   └── js/
+│       └── script.js
 │
 ├── templates/
 │   ├── base.html
 │   ├── login.html
 │   ├── index.html
-│   ├── add_student.html
-│   └── edit_student.html
+│   ├── students.html
+│   ├── student_form.html
+│   ├── student_detail.html
+│   ├── attendance.html
+│   ├── reports.html
+│   └── notices.html
 │
-└── static/
-    ├── css/
-    │   └── style.css
-    │
-    └── js/
-        └── script.js
+└── README.md
 ```
 
 ---
 
-## ⚙️ Installation
+## ⚡ Installation
 
 ### Clone Repository
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/student-management-system.git
+git clone https://github.com/yourusername/student-management-system.git
 ```
 
-### Move into Project
+### Move Into Folder
 
 ```bash
 cd student-management-system
@@ -126,7 +124,7 @@ pip install -r requirements.txt
 python app.py
 ```
 
-Application will run on:
+Open:
 
 ```text
 http://127.0.0.1:5000
@@ -134,68 +132,51 @@ http://127.0.0.1:5000
 
 ---
 
-## 🔑 Default Login Credentials
+## 🔑 Demo Credentials
+
+### Admin
 
 ```text
 Username: admin
 Password: admin123
 ```
 
----
+### Teacher
 
-## 📊 Dashboard Overview
+```text
+Username: teacher
+Password: teach123
+```
 
-The dashboard provides:
+### Student
 
-- Student Statistics
-- Student Search
-- Student Management
-- Marks Tracking
-- Grade Calculation
-- Real-Time Updates
-
----
-
-## 🎯 Key Functionalities
-
-### Add Student
-Store:
-- Name
-- Email
-- Age
-- Course
-- Marks
-
-### Update Student
-Modify student information anytime.
-
-### Delete Student
-Remove records permanently.
-
-### Search Student
-Search by:
-- Name
-- Email
-- Course
-
-### Analytics
-View:
-- Total Students
-- Average Marks
+```text
+Username: student
+Password: stu123
+```
 
 ---
 
-## 🌍 Deployment
+## 📊 Dashboard Modules
 
-### Render Deployment
+- Student Overview
+- Attendance Overview
+- Notices
+- Reports
+- Analytics
+- Export Data
 
-Build Command:
+---
+
+## 🌐 Deployment on Render
+
+### Build Command
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Start Command:
+### Start Command
 
 ```bash
 gunicorn app:app
@@ -203,74 +184,32 @@ gunicorn app:app
 
 ---
 
-## 📸 Screenshots
+## 🎯 Future Improvements
 
-### Login Page
-- Secure Authentication
-- Responsive Design
-- <img width="1366" height="768" alt="image" src="https://github.com/user-attachments/assets/2f8d57f4-d8d8-4f7c-ab2b-798bc27452f0" />
-
-
-### Dashboard
-- Student Analytics
-- Search Functionality
-- CRUD Operations
-- <img width="1366" height="768" alt="image" src="https://github.com/user-attachments/assets/ddde5521-7ea9-41f8-a268-5d2be9c79f5c" />
-<img width="1366" height="768" alt="image" src="https://github.com/user-attachments/assets/8472ba0b-f778-4342-bd1a-1cc603cf4796" />
-
-
----
-
-## 🔮 Future Enhancements
-
-- Student Photo Upload
-- PDF Export
-- Excel Export
-- Attendance Management
-- Multiple User Roles
 - Email Notifications
-- Chart Analytics
-- Dark Mode
-- SQLAlchemy Integration
-- Cloud Database Support
+- Parent Portal
+- Fee Management
+- Online Exams
+- AI Analytics
+- PDF Report Generation
+- Multi-School Support
 
 ---
 
-## 💼 Resume Project Description
+## 👨‍💻 Author
 
-Developed a full-stack Student Management System using Flask, SQLite, Bootstrap, HTML, CSS, and JavaScript. Implemented secure authentication, CRUD operations, student search, automatic grade generation, analytics dashboard, and responsive UI. Deployed the application on Render with GitHub integration for continuous deployment.
-
----
-
-## ⭐ Project Highlights
-
-✅ Full Stack Development
-
-✅ Authentication System
-
-✅ Database Integration
-
-✅ Analytics Dashboard
-
-✅ CRUD Operations
-
-✅ Responsive Design
-
-✅ Cloud Deployment
-
-✅ Portfolio Ready
+BURUKALA MANI REETHIKA
 
 ---
 
-## 👩‍💻 Author
+## ⭐ Support
 
-**Manireethika Burukala**
+If you found this project useful:
 
-GitHub:
-https://github.com/BurukalaManiReethika
+⭐ Star the repository
 
+🍴 Fork the project
 
+🚀 Deploy your own version
 
----
-
-### ⭐ If you found this project useful, consider giving it a star on GitHub!
+Happy Coding!
