@@ -1,34 +1,146 @@
-// Auto-dismiss alerts after 4 second
-document.addEventListener("DOMContentLoaded", function () {
-  const alerts = document.querySelectorAll(".alert");
-  alerts.forEach(function (alert) {
-    setTimeout(function () {
-      const bsAlert = bootstrap.Alert.getOrCreateInstance(alert);
-      if (bsAlert) bsAlert.close();
-    }, 4000);
-  });
+// ─────────────────────────────────────────────
+// Student Management System JS
+// ─────────────────────────────────────────────
+
+document.addEventListener("DOMContentLoaded", () => {
+
+    // Auto hide alerts after 5 seconds
+    const alerts = document.querySelectorAll(".alert");
+
+    alerts.forEach(alert => {
+        setTimeout(() => {
+            alert.classList.remove("show");
+            alert.classList.add("fade");
+        }, 5000);
+    });
+
+    // Confirm delete buttons
+    const deleteButtons = document.querySelectorAll(".btn-danger");
+
+    deleteButtons.forEach(btn => {
+        btn.addEventListener("click", function (e) {
+
+            const confirmDelete = confirm(
+                "Are you sure you want to delete this record?"
+            );
+
+            if (!confirmDelete) {
+                e.preventDefault();
+            }
+
+        });
+    });
+
+    // Search filter for tables
+    const searchInput = document.getElementById("tableSearch");
+
+    if (searchInput) {
+
+        searchInput.addEventListener("keyup", function () {
+
+            let filter = this.value.toLowerCase();
+
+            let rows = document.querySelectorAll("tbody tr");
+
+            rows.forEach(row => {
+
+                let text = row.innerText.toLowerCase();
+
+                row.style.display =
+                    text.includes(filter)
+                        ? ""
+                        : "none";
+
+            });
+
+        });
+
+    }
+
+    // Smooth scroll
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+
+        anchor.addEventListener("click", function (e) {
+
+            e.preventDefault();
+
+            document.querySelector(
+                this.getAttribute("href")
+            ).scrollIntoView({
+                behavior: "smooth"
+            });
+
+        });
+
+    });
+
 });
 
-// Dark mode toggle
-document.addEventListener("DOMContentLoaded", function () {
-  const toggle = document.getElementById("themeToggle");
-  if (!toggle) return;
+// ─────────────────────────────────────────────
+// Attendance Summary
+// ─────────────────────────────────────────────
 
-  const root = document.documentElement;
-  const icon = toggle.querySelector("i");
+function attendanceStats() {
 
-  function syncIcon() {
-    const isDark = root.getAttribute("data-theme") === "dark";
-    icon.classList.toggle("fa-moon", !isDark);
-    icon.classList.toggle("fa-sun", isDark);
-  }
-  syncIcon();
+    let present =
+        document.querySelectorAll(
+            "select option[value='P']:checked"
+        ).length;
 
-  toggle.addEventListener("click", function () {
-    const isDark = root.getAttribute("data-theme") === "dark";
-    const next = isDark ? "light" : "dark";
-    root.setAttribute("data-theme", next);
-    localStorage.setItem("sms-theme", next);
-    syncIcon();
-  });
-});
+    let absent =
+        document.querySelectorAll(
+            "select option[value='A']:checked"
+        ).length;
+
+    let leave =
+        document.querySelectorAll(
+            "select option[value='L']:checked"
+        ).length;
+
+    console.log("Present:", present);
+    console.log("Absent:", absent);
+    console.log("Leave:", leave);
+
+}
+
+// ─────────────────────────────────────────────
+// Export Helper
+// ─────────────────────────────────────────────
+
+function exportMessage() {
+
+    alert(
+        "Student data export started."
+    );
+
+}
+
+// ─────────────────────────────────────────────
+// Dashboard Greeting
+// ─────────────────────────────────────────────
+
+function dashboardGreeting() {
+
+    const hour = new Date().getHours();
+
+    let msg = "Welcome";
+
+    if (hour < 12) {
+
+        msg = "Good Morning";
+
+    } else if (hour < 18) {
+
+        msg = "Good Afternoon";
+
+    } else {
+
+        msg = "Good Evening";
+
+    }
+
+    console.log(msg);
+
+}
+
+dashboardGreeting();
