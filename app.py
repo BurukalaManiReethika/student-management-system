@@ -243,19 +243,23 @@ def login():
                 (username, password)
             ).fetchone()
 
-        if user:
+   
 
-            session["user_id"] = user["id"]
-            session["username"] = user["username"]
-            session["name"] = user["name"]
-            session["role"] = user["role"]
+if user:
 
-            flash(
-                "
-            # --------------------------------------------------
-# Logout
-# --------------------------------------------------
+    session["user_id"] = user["id"]
+    session["username"] = user["username"]
+    session["name"] = user["name"]
+    session["role"] = user["role"]
 
+    flash(
+        "Login successful",
+        "success"
+    )
+
+    return redirect(
+        url_for("index")
+    )
 @app.route("/logout")
 def logout():
 
