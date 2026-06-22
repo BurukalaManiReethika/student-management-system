@@ -218,7 +218,6 @@ init_db()
 # --------------------------------------------------
 # Login
 # --------------------------------------------------
-
 @app.route("/login", methods=["GET", "POST"])
 def login():
 
@@ -228,47 +227,44 @@ def login():
     if request.method == "POST":
 
         username = request.form["username"]
-        password = hash_pw(
-            request.form["password"]
-        )
+        password = hash_pw(request.form["password"])
 
         with get_db() as conn:
 
             user = conn.execute(
                 """
-                SELECT * FROM users
+                SELECT *
+                FROM users
                 WHERE username=?
                 AND password=?
                 """,
                 (username, password)
             ).fetchone()
 
-   
+        if user:
 
-if user:
+            session["user_id"] = user["id"]
+            session["username"] = user["username"]
+            session["name"] = user["name"]
+            session["role"] = user["role"]
 
-    session["user_id"] = user["id"]
-    session["username"] = user["username"]
-    session["name"] = user["name"]
-    session["role"] = user["role"]
+            flash(
+                "Login successful",
+                "success"
+            )
 
-    flash(
-        "Login successful",
-        "success"
-    )
+            return redirect(
+                url_for("index")
+            )
 
-    return redirect(
-        url_for("index")
-    )
+        flash(
+            "Invalid username or password",
+            "danger"
+        )
 
-flash(
-    "Invalid username or password",
-    "danger"
-)
+    return render_template("login.html")
 
-return render_template(
-    "login.html"
-)
+
 @app.route("/logout")
 def logout():
 
