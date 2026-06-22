@@ -1,0 +1,246 @@
+{% extends "base.html" %}
+
+{% block title %}
+Reports
+{% endblock %}
+
+{% block content %}
+
+<h2 class="mb-4">
+    Academic Reports
+</h2>
+
+<div class="row mb-4">
+
+    <div class="col-md-3">
+
+        <div class="card shadow-sm text-center">
+
+            <div class="card-body">
+
+                <h3>{{ total }}</h3>
+
+                <p>Total Students</p>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="col-md-3">
+
+        <div class="card shadow-sm text-center">
+
+            <div class="card-body">
+
+                <h3>{{ avg }}</h3>
+
+                <p>Average Marks</p>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="col-md-3">
+
+        <div class="card shadow-sm text-center">
+
+            <div class="card-body">
+
+                <h3>{{ highest }}</h3>
+
+                <p>Highest Marks</p>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="col-md-3">
+
+        <div class="card shadow-sm text-center">
+
+            <div class="card-body">
+
+                <h3>{{ lowest }}</h3>
+
+                <p>Lowest Marks</p>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<div class="card shadow-sm mb-4">
+
+    <div class="card-header">
+
+        <h5 class="mb-0">
+            Grade Distribution
+        </h5>
+
+    </div>
+
+    <div class="card-body">
+
+        <table class="table table-bordered">
+
+            <thead>
+
+            <tr>
+
+                <th>Grade</th>
+                <th>Students</th>
+
+            </tr>
+
+            </thead>
+
+            <tbody>
+
+            {% for grade, count in grade_dist.items() %}
+
+            <tr>
+
+                <td>{{ grade }}</td>
+
+                <td>{{ count }}</td>
+
+            </tr>
+
+            {% endfor %}
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</div>
+
+<div class="card shadow-sm mb-4">
+
+    <div class="card-header">
+
+        <h5 class="mb-0">
+            Course Average Marks
+        </h5>
+
+    </div>
+
+    <div class="card-body">
+
+        <table class="table table-striped">
+
+            <thead>
+
+            <tr>
+
+                <th>Course</th>
+                <th>Average Marks</th>
+
+            </tr>
+
+            </thead>
+
+            <tbody>
+
+            {% for course, avg_mark in course_avgs.items() %}
+
+            <tr>
+
+                <td>{{ course }}</td>
+
+                <td>{{ avg_mark }}</td>
+
+            </tr>
+
+            {% endfor %}
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</div>
+
+<div class="card shadow-sm">
+
+    <div class="card-header">
+
+        <h5 class="mb-0">
+            Student Performance Report
+        </h5>
+
+    </div>
+
+    <div class="card-body">
+
+        <div class="table-responsive">
+
+            <table class="table table-hover">
+
+                <thead>
+
+                <tr>
+
+                    <th>Student</th>
+                    <th>Course</th>
+                    <th>Marks</th>
+                    <th>Grade</th>
+
+                </tr>
+
+                </thead>
+
+                <tbody>
+
+                {% for student, grade in students %}
+
+                <tr>
+
+                    <td>
+                        {{ student.name }}
+                    </td>
+
+                    <td>
+                        {{ student.course }}
+                    </td>
+
+                    <td>
+                        {{ student.marks }}
+                    </td>
+
+                    <td>
+
+                        <span class="badge bg-primary">
+
+                            {{ grade }}
+
+                        </span>
+
+                    </td>
+
+                </tr>
+
+                {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}
