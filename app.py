@@ -1,576 +1,543 @@
-import os
-import csv
-import io
-import secrets
-from collections import Counter
-from datetime import date, datetime
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, Response
+import sqlite3, csv, io, hashlib, os
+from datetime import datetime, date, timedelta
 from functools import wraps
 
-from flask import (
-    Flask, render_template, request, redirect, url_for,
-    session, flash, Response, abort
-)
-from sqlalchemy import func
-from werkzeug.security import generate_password_hash, check_password_hash
-
-from models import db, Student, Attendance
-
 app = Flask(__name__)
+app.secret_key = os.environ.get('SECRET_KEY', 'change-this-in-production-xyz123')
 
-# -------------------------
-# Config (env-driven, with safe local defaults)
-# -------------------------
-app.secret_key = os.environ.get("SECRET_KEY", secrets.token_hex(32))
-app.config["DEBUG"] = os.environ.get("FLASK_DEBUG", "0") == "1"
+DB = 'students.db'
 
-DATABASE = os.environ.get("DATABASE_PATH", "students.db")
-if not os.path.isabs(DATABASE):
-    # Resolve relative to the app's root directory (not Flask's instance/
-    # folder) so any existing students.db from the previous sqlite3-only
-    # version of this app is picked up automatically after upgrading.
-    DATABASE = os.path.join(app.root_path, DATABASE)
+# ── helpers ──────────────────────────────────────────────────────────────────
 
-app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
-    "DATABASE_URL", f"sqlite:///{DATABASE}"
-)
-app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+def get_db():
+    conn = sqlite3.connect(DB)
+    conn.row_factory = sqlite3.Row
+    return conn
 
-db.init_app(app)
+def hash_pw(pw):
+    return hashlib.sha256(pw.encode()).hexdigest()
 
-ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "admin")
-# Default password hash corresponds to "admin123" — override in production via env var.
-ADMIN_PASSWORD_HASH = os.environ.get(
-    "ADMIN_PASSWORD_HASH",
-    generate_password_hash("admin123")
-)
+def grade(marks):
+    if marks >= 90: return 'A+'
+    if marks >= 80: return 'A'
+    if marks >= 70: return 'B'
+    if marks >= 60: return 'C'
+    if marks >= 50: return 'D'
+    return 'F'
 
-PER_PAGE = 10
-
-
-# -------------------------
-# Validation Helpers
-# -------------------------
-def validate_student_form(form):
-    """Returns (data_dict, errors_list)."""
-    errors = []
-
-    name = form.get("name", "").strip()
-    email = form.get("email", "").strip()
-    age_raw = form.get("age", "").strip()
-    course = form.get("course", "").strip()
-    marks_raw = form.get("marks", "").strip()
-
-    if not name:
-        errors.append("Name is required.")
-    if not email or "@" not in email or "." not in email.split("@")[-1]:
-        errors.append("A valid email is required.")
-    if not course:
-        errors.append("Course is required.")
-
-    age = None
-    if age_raw:
-        try:
-            age = int(age_raw)
-            if age < 0 or age > 120:
-                errors.append("Age must be between 0 and 120.")
-        except ValueError:
-            errors.append("Age must be a whole number.")
-    else:
-        errors.append("Age is required.")
-
-    marks = None
-    if marks_raw:
-        try:
-            marks = int(marks_raw)
-            if marks < 0 or marks > 100:
-                errors.append("Marks must be between 0 and 100.")
-        except ValueError:
-            errors.append("Marks must be a whole number.")
-    else:
-        errors.append("Marks is required.")
-
-    return {
-        "name": name,
-        "email": email,
-        "age": age,
-        "course": course,
-        "marks": marks,
-    }, errors
-
-
-def email_exists(email, exclude_id=None):
-    query = Student.query.filter(Student.email == email)
-    if exclude_id:
-        query = query.filter(Student.id != exclude_id)
-    return query.first() is not None
-
-
-# -------------------------
-# CSRF Protection (lightweight, no external dependency)
-# -------------------------
-def generate_csrf_token():
-    if "csrf_token" not in session:
-        session["csrf_token"] = secrets.token_hex(16)
-    return session["csrf_token"]
-
-
-app.jinja_env.globals["csrf_token"] = generate_csrf_token
-
-
-def csrf_protect(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if request.method == "POST":
-            token = session.get("csrf_token")
-            form_token = request.form.get("csrf_token")
-            if not token or not form_token or token != form_token:
-                abort(400, description="Invalid or missing CSRF token.")
-        return f(*args, **kwargs)
-    return decorated_function
-
-
-# -------------------------
-# Login Required
-# -------------------------
 def login_required(f):
     @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if "admin" not in session:
-            flash("Please Login First", "danger")
-            return redirect(url_for("login"))
+    def decorated(*args, **kwargs):
+        if 'user_id' not in session:
+            flash('Please login first.', 'warning')
+            return redirect(url_for('login'))
         return f(*args, **kwargs)
-    return decorated_function
+    return decorated
 
+def role_required(*roles):
+    def decorator(f):
+        @wraps(f)
+        def decorated(*args, **kwargs):
+            if session.get('role') not in roles:
+                flash('Access denied.', 'danger')
+                return redirect(url_for('index'))
+            return f(*args, **kwargs)
+        return decorated
+    return decorator
 
-# -------------------------
-# Login
-# -------------------------
-@app.route("/login", methods=["GET", "POST"])
+# ── init db ──────────────────────────────────────────────────────────────────
+
+def init_db():
+    with get_db() as conn:
+        conn.executescript('''
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE NOT NULL,
+                password TEXT NOT NULL,
+                name TEXT NOT NULL,
+                role TEXT NOT NULL DEFAULT 'student'
+            );
+
+            CREATE TABLE IF NOT EXISTS students (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                email TEXT UNIQUE NOT NULL,
+                age INTEGER,
+                gender TEXT DEFAULT 'Male',
+                course TEXT NOT NULL,
+                marks INTEGER NOT NULL DEFAULT 0,
+                phone TEXT,
+                address TEXT,
+                dob TEXT,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS attendance (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                student_id INTEGER NOT NULL,
+                date TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'P',
+                marked_by INTEGER,
+                UNIQUE(student_id, date),
+                FOREIGN KEY(student_id) REFERENCES students(id) ON DELETE CASCADE,
+                FOREIGN KEY(marked_by) REFERENCES users(id)
+            );
+
+            CREATE TABLE IF NOT EXISTS notices (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                body TEXT,
+                type TEXT DEFAULT 'info',
+                created_by INTEGER,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(created_by) REFERENCES users(id)
+            );
+        ''')
+
+        users = [
+            ('admin', hash_pw('admin123'), 'Admin User', 'admin'),
+            ('teacher', hash_pw('teach123'), 'Ms. Priya Sharma', 'teacher'),
+            ('student', hash_pw('stu123'), 'Ravi Kumar', 'student'),
+        ]
+
+        for u in users:
+            conn.execute(
+                'INSERT OR IGNORE INTO users(username,password,name,role) VALUES(?,?,?,?)',
+                u
+            )
+
+        sample = [
+            ('Aanya Singh','aanya@example.com',19,'Female','Computer Science',92,'9876543210','Chennai','2005-03-12'),
+            ('Ravi Kumar','ravi@example.com',20,'Male','Mathematics',78,'9876543211','Mumbai','2004-07-22'),
+            ('Priya Nair','priya@example.com',18,'Female','Physics',85,'9876543212','Bangalore','2006-01-05'),
+            ('Arjun Mehta','arjun@example.com',21,'Male','Chemistry',55,'9876543213','Delhi','2003-11-18'),
+            ('Sneha Reddy','sneha@example.com',19,'Female','Biology',67,'9876543214','Hyderabad','2005-05-30'),
+            ('Karthik Raj','karthik@example.com',20,'Male','English',43,'9876543215','Coimbatore','2004-09-14'),
+            ('Meena Iyer','meena@example.com',18,'Female','History',88,'9876543216','Pune','2006-02-28'),
+            ('Vikram Das','vikram@example.com',22,'Male','Economics',71,'9876543217','Kolkata','2002-12-01'),
+        ]
+
+        for s in sample:
+            conn.execute('''
+                INSERT OR IGNORE INTO students
+                (name,email,age,gender,course,marks,phone,address,dob)
+                VALUES(?,?,?,?,?,?,?,?,?)
+            ''', s)
+
+        notices = [
+            ('Semester exams schedule released',
+             'Final exams will be held from July 10–20. Check the timetable on the portal.',
+             'exam', 1),
+
+            ('Annual sports day — June 30',
+             'All students are encouraged to participate. Registration open now.',
+             'event', 1),
+
+            ('Library closed June 25',
+             'The library will be closed for maintenance on June 25th.',
+             'info', 1),
+        ]
+
+        for n in notices:
+            conn.execute(
+                'INSERT OR IGNORE INTO notices(title,body,type,created_by) VALUES(?,?,?,?)',
+                n
+            )
+
+        import random
+        students = conn.execute('SELECT id FROM students').fetchall()
+
+        today = date.today()
+        days = []
+        d = today
+
+        while len(days) < 5:
+            if d.weekday() < 5:
+                days.append(d.isoformat())
+            d -= timedelta(days=1)
+
+        for s in students:
+            for day in days:
+                st = random.choice(['P','P','P','A','L'])
+                conn.execute(
+                    'INSERT OR IGNORE INTO attendance(student_id,date,status) VALUES(?,?,?)',
+                    (s['id'], day, st)
+                )
+
+init_db()
+
+# ── auth ─────────────────────────────────────────────────────────────────────
+
+@app.route('/login', methods=['GET','POST'])
 def login():
-    if request.method == "POST":
-        username = request.form.get("username", "")
-        password = request.form.get("password", "")
+    if 'user_id' in session:
+        return redirect(url_for('index'))
 
-        if username == ADMIN_USERNAME and check_password_hash(ADMIN_PASSWORD_HASH, password):
-            session.clear()
-            session["admin"] = username
-            generate_csrf_token()
-            flash("Login Successful", "success")
-            return redirect(url_for("dashboard"))
+    if request.method == 'POST':
+        username = request.form['username'].strip()
+        password = hash_pw(request.form['password'])
 
-        flash("Invalid Credentials", "danger")
+        with get_db() as conn:
+            user = conn.execute(
+                'SELECT * FROM users WHERE username=? AND password=?',
+                (username, password)
+            ).fetchone()
 
-    return render_template("login.html")
+        if user:
+            session['user_id'] = user['id']
+            session['username'] = user['username']
+            session['name'] = user['name']
+            session['role'] = user['role']
 
+            flash(f'Welcome back, {user["name"]}!', 'success')
+            return redirect(url_for('index'))
 
-# -------------------------
-# Logout
-# -------------------------
-@app.route("/logout")
+        flash('Invalid username or password.', 'danger')
+
+    return render_template('login.html')
+
+@app.route('/logout')
 def logout():
     session.clear()
-    flash("Logged Out Successfully", "info")
-    return redirect(url_for("login"))
+    flash('Logged out successfully.', 'info')
+    return redirect(url_for('login'))
 
+# ── dashboard ────────────────────────────────────────────────────────────────
 
-# -------------------------
-# Dashboard (with pagination + sorting)
-# -------------------------
-@app.route("/")
+@app.route('/')
 @login_required
-def dashboard():
-    page = request.args.get("page", 1, type=int)
-    sort = request.args.get("sort", "id")
-    order = request.args.get("order", "desc")
+def index():
+    with get_db() as conn:
+        students = conn.execute('SELECT * FROM students').fetchall()
 
-    allowed_sort = {"id", "name", "marks", "course", "age"}
-    if sort not in allowed_sort:
-        sort = "id"
-    order = order.lower() if order.lower() in ("asc", "desc") else "desc"
+        notices = conn.execute(
+            '''
+            SELECT n.*, u.name as author
+            FROM notices n
+            LEFT JOIN users u ON n.created_by=u.id
+            ORDER BY n.created_at DESC
+            LIMIT 3
+            '''
+        ).fetchall()
 
-    sort_col = getattr(Student, sort)
-    sort_col = sort_col.asc() if order == "asc" else sort_col.desc()
+    total = len(students)
+    avg = round(sum(s['marks'] for s in students) / total, 1) if total else 0
+    passing = sum(1 for s in students if s['marks'] >= 50)
+    top = max(students, key=lambda s: s['marks'], default=None)
 
-    total_students = Student.query.count()
-    avg_marks = db.session.query(func.avg(Student.marks)).scalar() or 0
+    grade_dist = {'A+':0,'A':0,'B':0,'C':0,'D':0,'F':0}
+    course_dist = {}
 
-    pagination = Student.query.order_by(sort_col).paginate(
-        page=page, per_page=PER_PAGE, error_out=False
-    )
-    students = pagination.items
-    total_pages = max(1, pagination.pages)
+    for s in students:
+        g = grade(s['marks'])
+        grade_dist[g] += 1
+        course_dist[s['course']] = course_dist.get(s['course'], 0) + 1
+
+    top5 = sorted(students, key=lambda s: s['marks'], reverse=True)[:5]
 
     return render_template(
-        "index.html",
-        students=students,
-        total_students=total_students,
-        avg_marks=round(avg_marks, 2),
-        page=page,
-        total_pages=total_pages,
-        sort=sort,
-        order=order
+        'index.html',
+        total=total,
+        avg=avg,
+        passing=passing,
+        top=top,
+        grade_dist=grade_dist,
+        course_dist=course_dist,
+        top5=top5,
+        notices=notices,
+        grade_fn=grade
+    )
+            total=len(rows)
     )
 
-
-# -------------------------
-# Add Student
-# -------------------------
-@app.route("/add", methods=["GET", "POST"])
+@app.route('/students/add', methods=['GET','POST'])
 @login_required
-@csrf_protect
+@role_required('admin','teacher')
 def add_student():
-    if request.method == "POST":
-        data, errors = validate_student_form(request.form)
-
-        if not errors and email_exists(data["email"]):
-            errors.append("A student with this email already exists.")
-
-        if errors:
-            for e in errors:
-                flash(e, "danger")
-            return render_template("add_student.html", form=request.form)
-
-        student = Student(
-            name=data["name"], email=data["email"], age=data["age"],
-            course=data["course"], marks=data["marks"]
-        )
-        student.refresh_grade()
-
+    if request.method == 'POST':
         try:
-            db.session.add(student)
-            db.session.commit()
-            flash("Student Added Successfully", "success")
-        except Exception as e:
-            db.session.rollback()
-            flash(f"Database error: {e}", "danger")
+            with get_db() as conn:
+                conn.execute('''INSERT INTO students
+                    (name,email,age,gender,course,marks,phone,address,dob)
+                    VALUES(?,?,?,?,?,?,?,?,?)''', (
+                    request.form['name'].strip(),
+                    request.form['email'].strip(),
+                    int(request.form.get('age') or 0),
+                    request.form.get('gender','Male'),
+                    request.form['course'],
+                    int(request.form['marks']),
+                    request.form.get('phone','').strip(),
+                    request.form.get('address','').strip(),
+                    request.form.get('dob',''),
+                ))
+            flash('Student added successfully!', 'success')
+            return redirect(url_for('students'))
+        except sqlite3.IntegrityError:
+            flash('Email already exists.', 'danger')
+    return render_template('student_form.html', student=None, courses=COURSES, action='Add')
 
-        return redirect(url_for("dashboard"))
-
-    return render_template("add_student.html", form={})
-
-
-# -------------------------
-# Edit Student
-# -------------------------
-@app.route("/edit/<int:id>", methods=["GET", "POST"])
+@app.route('/students/edit/<int:sid>', methods=['GET','POST'])
 @login_required
-@csrf_protect
-def edit_student(id):
-    student = Student.query.get(id)
-
-    if student is None:
-        flash("Student not found.", "danger")
-        return redirect(url_for("dashboard"))
-
-    if request.method == "POST":
-        data, errors = validate_student_form(request.form)
-
-        if not errors and email_exists(data["email"], exclude_id=id):
-            errors.append("Another student already uses this email.")
-
-        if errors:
-            for e in errors:
-                flash(e, "danger")
-            return render_template("edit_student.html", student=student)
-
-        student.name = data["name"]
-        student.email = data["email"]
-        student.age = data["age"]
-        student.course = data["course"]
-        student.marks = data["marks"]
-        student.refresh_grade()
-
+@role_required('admin','teacher')
+def edit_student(sid):
+    with get_db() as conn:
+        student = conn.execute('SELECT * FROM students WHERE id=?', (sid,)).fetchone()
+    if not student:
+        flash('Student not found.', 'danger')
+        return redirect(url_for('students'))
+    if request.method == 'POST':
         try:
-            db.session.commit()
-            flash("Student Updated Successfully", "success")
-        except Exception as e:
-            db.session.rollback()
-            flash(f"Database error: {e}", "danger")
+            with get_db() as conn:
+                conn.execute('''UPDATE students SET
+                    name=?,email=?,age=?,gender=?,course=?,marks=?,phone=?,address=?,dob=?
+                    WHERE id=?''', (
+                    request.form['name'].strip(),
+                    request.form['email'].strip(),
+                    int(request.form.get('age') or 0),
+                    request.form.get('gender','Male'),
+                    request.form['course'],
+                    int(request.form['marks']),
+                    request.form.get('phone','').strip(),
+                    request.form.get('address','').strip(),
+                    request.form.get('dob',''),
+                    sid
+                ))
+            flash('Student updated!', 'success')
+            return redirect(url_for('students'))
+        except sqlite3.IntegrityError:
+            flash('Email already exists.', 'danger')
+    return render_template('student_form.html', student=student, courses=COURSES, action='Edit')
 
-        return redirect(url_for("dashboard"))
-
-    return render_template("edit_student.html", student=student)
-
-
-# -------------------------
-# Delete Student (POST only, CSRF protected)
-# -------------------------
-@app.route("/delete/<int:id>", methods=["POST"])
+@app.route('/students/delete/<int:sid>', methods=['POST'])
 @login_required
-@csrf_protect
-def delete_student(id):
-    student = Student.query.get(id)
-    try:
-        if student:
-            db.session.delete(student)
-            db.session.commit()
-            flash("Student Deleted Successfully", "warning")
-        else:
-            flash("Student not found.", "danger")
-    except Exception as e:
-        db.session.rollback()
-        flash(f"Database error: {e}", "danger")
+@role_required('admin')
+def delete_student(sid):
+    with get_db() as conn:
+        conn.execute('DELETE FROM students WHERE id=?', (sid,))
+    flash('Student deleted.', 'info')
+    return redirect(url_for('students'))
 
-    return redirect(url_for("dashboard"))
-
-
-# -------------------------
-# Search Student
-# -------------------------
-@app.route("/search")
+@app.route('/students/export')
 @login_required
-def search_student():
-    query = request.args.get("query", "").strip()
-    like = f"%{query}%"
-
-    students = Student.query.filter(
-        db.or_(
-            Student.name.ilike(like),
-            Student.email.ilike(like),
-            Student.course.ilike(like),
-        )
-    ).order_by(Student.id.desc()).all()
-
-    return render_template(
-        "index.html",
-        students=students,
-        total_students=len(students),
-        avg_marks=0,
-        page=1,
-        total_pages=1,
-        sort="id",
-        order="desc"
-    )
-
-
-# -------------------------
-# Export to CSV
-# -------------------------
-@app.route("/export")
-@login_required
-def export_csv():
-    students = Student.query.order_by(Student.id).all()
-
+def export_students():
+    with get_db() as conn:
+        rows = conn.execute('SELECT * FROM students ORDER BY name').fetchall()
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(["ID", "Name", "Email", "Age", "Course", "Marks", "Grade"])
-    for s in students:
-        writer.writerow([s.id, s.name, s.email, s.age, s.course, s.marks, s.grade])
+    writer.writerow(['ID','Name','Email','Age','Gender','Course','Marks','Grade','Phone','Address','DOB'])
+    for r in rows:
+        writer.writerow([r['id'],r['name'],r['email'],r['age'],r['gender'],
+                         r['course'],r['marks'],grade(r['marks']),r['phone'],r['address'],r['dob']])
+    output.seek(0)
+    return Response(output.getvalue(), mimetype='text/csv',
+                    headers={'Content-Disposition':'attachment;filename=students.csv'})
 
-    return Response(
-        output.getvalue(),
-        mimetype="text/csv",
-        headers={"Content-Disposition": "attachment; filename=students.csv"}
-    )
-
-
-# -------------------------
-# Export to PDF
-# -------------------------
-@app.route("/export/pdf")
+@app.route('/students/<int:sid>')
 @login_required
-def export_pdf():
-    from reportlab.lib import colors
-    from reportlab.lib.pagesizes import landscape, A4
-    from reportlab.lib.units import mm
-    from reportlab.platypus import (
-        SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
-    )
-    from reportlab.lib.styles import getSampleStyleSheet
-
-    students = Student.query.order_by(Student.id).all()
-
-    buf = io.BytesIO()
-    doc = SimpleDocTemplate(
-        buf, pagesize=landscape(A4),
-        topMargin=15 * mm, bottomMargin=15 * mm,
-        leftMargin=12 * mm, rightMargin=12 * mm,
-    )
-    styles = getSampleStyleSheet()
-    elements = [
-        Paragraph("Student Management System &mdash; Student Records", styles["Title"]),
-        Paragraph(
-            f"Generated on {datetime.now().strftime('%d %b %Y, %I:%M %p')} "
-            f"&middot; Total Students: {len(students)}",
-            styles["Normal"],
-        ),
-        Spacer(1, 10),
-    ]
-
-    table_data = [["ID", "Name", "Email", "Age", "Course", "Marks", "Grade"]]
-    for s in students:
-        table_data.append([s.id, s.name, s.email, s.age, s.course, s.marks, s.grade])
-
-    table = Table(table_data, repeatRows=1)
-    table.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#4f46e5")),
-        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-        ("FONTSIZE", (0, 0), (-1, -1), 9),
-        ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#d1d5db")),
-        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f4f6fb")]),
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("TOPPADDING", (0, 0), (-1, -1), 6),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-    ]))
-    elements.append(table)
-    doc.build(elements)
-    buf.seek(0)
-
-    return Response(
-        buf.read(),
-        mimetype="application/pdf",
-        headers={"Content-Disposition": "attachment; filename=students.pdf"}
+def student_detail(sid):
+    with get_db() as conn:
+        student = conn.execute('SELECT * FROM students WHERE id=?', (sid,)).fetchone()
+        att_records = conn.execute(
+            'SELECT * FROM attendance WHERE student_id=? ORDER BY date DESC LIMIT 30', (sid,)
+        ).fetchall()
+    if not student:
+        flash('Student not found.', 'danger')
+        return redirect(url_for('students'))
+    att_total  = len(att_records)
+    att_present= sum(1 for a in att_records if a['status']=='P')
+    att_pct    = round(att_present/att_total*100) if att_total else 0
+    return render_template('student_detail.html',
+        student=student, grade=grade(student['marks']),
+        att_records=att_records, att_pct=att_pct, att_present=att_present, att_total=att_total
     )
 
+# Attendance
 
-# -------------------------
-# Analytics Dashboard (charts)
-# -------------------------
-@app.route("/analytics")
+@app.route('/attendance', methods=['GET','POST'])
 @login_required
-def analytics():
-    students = Student.query.all()
+def attendance():
+    sel_date = request.args.get('date', date.today().isoformat())
+    status_filter = request.args.get('status','')
 
-    grade_counts = Counter(s.grade for s in students)
-    grade_labels = ["A+", "A", "B", "C", "D", "F"]
-    grade_data = [grade_counts.get(g, 0) for g in grade_labels]
+    if request.method == 'POST' and session['role'] in ('admin','teacher'):
+        sel_date = request.form.get('date', date.today().isoformat())
+        with get_db() as conn:
+            students = conn.execute('SELECT id FROM students').fetchall()
+            for s in students:
+                status = request.form.get(f'status_{s["id"]}', 'A')
+                conn.execute('''INSERT INTO attendance(student_id,date,status,marked_by)
+                    VALUES(?,?,?,?)
+                    ON CONFLICT(student_id,date)
+                    DO UPDATE SET status=excluded.status,
+                    marked_by=excluded.marked_by''',
+                    (s['id'], sel_date, status, session['user_id']))
+        flash(f'Attendance saved for {sel_date}!', 'success')
+        return redirect(url_for('attendance', date=sel_date))
 
-    course_counts = Counter(s.course for s in students)
-    course_labels = list(course_counts.keys())
-    course_data = [course_counts[c] for c in course_labels]
+    with get_db() as conn:
+        students = conn.execute('SELECT * FROM students ORDER BY name').fetchall()
+        att_map = {}
 
-    bins = ["0-49", "50-59", "60-69", "70-79", "80-89", "90-100"]
-    bin_data = [0] * 6
+        for a in conn.execute(
+            'SELECT * FROM attendance WHERE date=?',
+            (sel_date,)
+        ).fetchall():
+            att_map[a['student_id']] = a['status']
+
+    rows = []
     for s in students:
-        m = s.marks or 0
-        if m < 50:
-            bin_data[0] += 1
-        elif m < 60:
-            bin_data[1] += 1
-        elif m < 70:
-            bin_data[2] += 1
-        elif m < 80:
-            bin_data[3] += 1
-        elif m < 90:
-            bin_data[4] += 1
-        else:
-            bin_data[5] += 1
+        st = att_map.get(s['id'], '')
+        if not status_filter or st == status_filter:
+            rows.append({'student': s, 'status': st})
 
-    avg_marks = round((sum(s.marks or 0 for s in students) / len(students)), 2) if students else 0
-    top_student = max(students, key=lambda s: s.marks or 0, default=None)
+    P = sum(1 for r in rows if r['status']=='P')
+    A = sum(1 for r in rows if r['status']=='A')
+    L = sum(1 for r in rows if r['status']=='L')
+
+    dates = []
+    d = date.today()
+    while len(dates) < 5:
+        if d.weekday() < 5:
+            dates.append(d.isoformat())
+        d -= timedelta(days=1)
 
     return render_template(
-        "analytics.html",
-        total_students=len(students),
-        avg_marks=avg_marks,
-        top_student=top_student,
-        grade_labels=grade_labels,
-        grade_data=grade_data,
-        course_labels=course_labels,
-        course_data=course_data,
-        bin_labels=bins,
-        bin_data=bin_data,
+        'attendance.html',
+        rows=rows,
+        sel_date=sel_date,
+        dates=dates,
+        P=P,
+        A=A,
+        L=L,
+        status_filter=status_filter
     )
 
+# Reports
 
-# -------------------------
-# Attendance
-# -------------------------
-@app.route("/attendance", methods=["GET", "POST"])
+@app.route('/reports')
 @login_required
-@csrf_protect
-def attendance():
-    selected_date_raw = request.args.get("date") or request.form.get("date")
-    try:
-        selected_date = (
-            datetime.strptime(selected_date_raw, "%Y-%m-%d").date()
-            if selected_date_raw else date.today()
-        )
-    except ValueError:
-        selected_date = date.today()
+@role_required('admin','teacher')
+def reports():
+    with get_db() as conn:
+        students = conn.execute(
+            'SELECT * FROM students ORDER BY marks DESC'
+        ).fetchall()
 
-    if request.method == "POST":
-        students = Student.query.all()
-        for student in students:
-            status = request.form.get(f"status_{student.id}", "Absent")
-            record = Attendance.query.filter_by(
-                student_id=student.id, date=selected_date
-            ).first()
-            if record:
-                record.status = status
-            else:
-                db.session.add(Attendance(
-                    student_id=student.id, date=selected_date, status=status
-                ))
-        try:
-            db.session.commit()
-            flash(f"Attendance saved for {selected_date.strftime('%d %b %Y')}", "success")
-        except Exception as e:
-            db.session.rollback()
-            flash(f"Database error: {e}", "danger")
-        return redirect(url_for("attendance", date=selected_date.isoformat()))
+    total = len(students)
+    avg = round(sum(s['marks'] for s in students)/total,1) if total else 0
+    highest = max((s['marks'] for s in students), default=0)
+    lowest = min((s['marks'] for s in students), default=0)
+    passing = sum(1 for s in students if s['marks'] >= 50)
 
-    students = Student.query.order_by(Student.name).all()
-    existing = {
-        a.student_id: a.status
-        for a in Attendance.query.filter_by(date=selected_date).all()
+    grade_dist = {'A+':0,'A':0,'B':0,'C':0,'D':0,'F':0}
+    course_stats = {}
+
+    for s in students:
+        g = grade(s['marks'])
+        grade_dist[g] += 1
+
+        c = s['course']
+        if c not in course_stats:
+            course_stats[c] = {'total':0,'sum':0}
+
+        course_stats[c]['total'] += 1
+        course_stats[c]['sum'] += s['marks']
+
+    course_avgs = {
+        c: round(v['sum']/v['total'],1)
+        for c,v in course_stats.items()
     }
 
-    return render_template(
-        "attendance.html",
-        students=students,
-        existing=existing,
-        selected_date=selected_date,
-    )
-
-
-@app.route("/attendance/<int:student_id>")
-@login_required
-def attendance_history(student_id):
-    student = Student.query.get(student_id)
-    if student is None:
-        flash("Student not found.", "danger")
-        return redirect(url_for("dashboard"))
-
-    records = Attendance.query.filter_by(student_id=student_id).order_by(
-        Attendance.date.desc()
-    ).all()
-    present, total, pct = student.attendance_summary()
+    students_with_grade = [
+        (s, grade(s['marks']))
+        for s in students
+    ]
 
     return render_template(
-        "attendance_history.html",
-        student=student,
-        records=records,
-        present=present,
+        'reports.html',
+        students=students_with_grade,
         total=total,
-        pct=pct,
+        avg=avg,
+        highest=highest,
+        lowest=lowest,
+        passing=passing,
+        grade_dist=grade_dist,
+        course_avgs=course_avgs
     )
 
+# Notices
 
-# -------------------------
-# Error Handlers
-# -------------------------
-@app.errorhandler(400)
-def bad_request(e):
-    return render_template("error.html", code=400, message=str(e.description)), 400
+@app.route('/notices')
+@login_required
+def notices():
+    with get_db() as conn:
+        rows = conn.execute(
+            '''
+            SELECT n.*, u.name as author
+            FROM notices n
+            LEFT JOIN users u ON n.created_by=u.id
+            ORDER BY n.created_at DESC
+            '''
+        ).fetchall()
 
+    return render_template('notices.html', notices=rows)
 
-@app.errorhandler(404)
-def not_found(e):
-    return render_template("error.html", code=404, message="Page not found."), 404
+@app.route('/notices/add', methods=['POST'])
+@login_required
+@role_required('admin','teacher')
+def add_notice():
+    title = request.form.get('title','').strip()
+    body = request.form.get('body','').strip()
+    ntype = request.form.get('type','info')
 
+    if title:
+        with get_db() as conn:
+            conn.execute(
+                'INSERT INTO notices(title,body,type,created_by) VALUES(?,?,?,?)',
+                (title, body, ntype, session['user_id'])
+            )
 
-@app.errorhandler(500)
-def server_error(e):
-    return render_template("error.html", code=500, message="Something went wrong."), 500
+        flash('Notice posted!', 'success')
 
+    return redirect(url_for('notices'))
 
-# -------------------------
-# DB init
-# -------------------------
-with app.app_context():
-    db.create_all()
+@app.route('/notices/delete/<int:nid>', methods=['POST'])
+@login_required
+@role_required('admin')
+def delete_notice(nid):
+    with get_db() as conn:
+        conn.execute(
+            'DELETE FROM notices WHERE id=?',
+            (nid,)
+        )
 
-if __name__ == "__main__":
-    app.run(debug=app.config["DEBUG"])
+    flash('Notice deleted.', 'info')
+    return redirect(url_for('notices'))
+
+# API
+
+@app.route('/api/stats')
+@login_required
+def api_stats():
+    with get_db() as conn:
+        students = conn.execute(
+            'SELECT marks, course FROM students'
+        ).fetchall()
+
+    grade_dist = {'A+':0,'A':0,'B':0,'C':0,'D':0,'F':0}
+    course_dist = {}
+
+    for s in students:
+        grade_dist[grade(s['marks'])] += 1
+        course_dist[s['course']] = course_dist.get(
+            s['course'], 0
+        ) + 1
+
+    return jsonify(
+        grade_dist=grade_dist,
+        course_dist=course_dist
+    )
+
+if __name__ == '__main__':
+    app.run(debug=True)
