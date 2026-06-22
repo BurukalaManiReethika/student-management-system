@@ -248,14 +248,11 @@ def index():
         notices=notices,
         grade_fn=grade
     )
-            total=len(rows)
-    )
-
-@app.route('/students/add', methods=['GET','POST'])
-@login_required
-@role_required('admin','teacher')
-def add_student():
-    if request.method == 'POST':
+    @app.route('/students/add', methods=['GET','POST'])
+    @login_required
+    @role_required('admin','teacher')
+    def add_student():
+      if request.method == 'POST':
         try:
             with get_db() as conn:
                 conn.execute('''INSERT INTO students
