@@ -1,6 +1,6 @@
 # 🎓 Student Management System
 
-A modern and responsive Student Management System built with Flask, SQLite, HTML, CSS, and JavaScript.
+A modern and responsive Student Management System built with Flask, SQLite, HTML, CSS, and JavaScript
 
 ## 🚀 Features
 
